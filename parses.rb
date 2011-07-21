@@ -1,7 +1,9 @@
 
 puts ARGV.first
 out = {}
-File.foreach(ARGV.first) do |line|
+withoutComments = File.read(ARGV.first).gsub( /(\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+)/,'' ).gsub( /\/\/.*/, '' )
+
+withoutComments.each_line do |line|
   /(.+)\{(.+)\}/ =~ line
   next if $1.nil?
   next if $2.nil?
