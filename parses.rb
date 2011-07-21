@@ -2,8 +2,14 @@
 puts ARGV.first
 out = {}
 withoutComments = File.read(ARGV.first).gsub( /(\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+)/,'' ).gsub( /\/\/.*/, '' )
+withoutComments.gsub!( /\{/, ' {')
+withoutComments.gsub!( /\}\s?$/, '}__!__')
+withoutComments.gsub!( /[\n|\r]/, ' ')
 
-withoutComments.each_line do |line|
+withoutComments = withoutComments.split('__!__')
+puts withoutComments
+
+withoutComments.each do |line|
   /(.+)\{(.+)\}/ =~ line
   next if $1.nil?
   next if $2.nil?
