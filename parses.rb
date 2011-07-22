@@ -1,47 +1,78 @@
+class Parses
+  BLOCK_COMMENT = /\/\*.*?\*\//m
+  LINE_COMMENT =  /\/\/.*/
 
-puts ARGV.first
-out = {}
-withoutComments = File.read(ARGV.first).gsub( /(\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+)/,'' ).gsub( /\/\/.*/, '' )
-withoutComments.gsub!( /\{/, ' {')
-withoutComments.gsub!( /\}\s?$/, '}__!__')
-withoutComments.gsub!( /[\n|\r]/, ' ')
-
-withoutComments = withoutComments.split('__!__')
-puts withoutComments
-
-withoutComments.each do |line|
-  /(.+)\{(.+)\}/ =~ line
-  next if $1.nil?
-  next if $2.nil?
-  selectors, attributes = $1, $2
-
-  attributes.split( ';' ).each do |attr|
-    next if attr.strip.empty?
-    out["{ #{attr.strip}; }"] ||=[]
-    out["{ #{attr.strip}; }"] << selectors.split(',')
+    attr_accessor :in_file, :out_file, :out_hash
+  def initialize(args)
+    @in_file, @out_file = args
   end
-end
 
-sorted_keys = out.keys.sort
+  def run
+    self.remove_comments
+    self.remove_newlines
+    self.construct_hash
+    self.construct_file
+    self
+  end
 
-File.open(ARGV.last, 'w+') do |writer|
-  sorted_keys.each do |attr|
-    selectors = out[attr]
+  def lines
+    @lines ||= File.read @in_file
+  end
 
-    selectors.flatten!
-    selectors.flatten.each do |selector|
-      selector.strip!
-      unless selectors.last.strip == selector
-        selector = selector + ','
+  def remove_comments
+    lines.gsub! BLOCK_COMMENT, ''
+    #lines.gsub! LINE_COMMENT, ''
+    self
+  end
+
+  def remove_newlines
+    lines.gsub! /;\s*$\n/, "; "
+    lines.gsub! /,\s*$\n/, ", "
+    lines.gsub! /{\s*$\n/, "{ "
+      lines.gsub! /^\s*\}\n/, " }"
+      self
+  end
+
+  def construct_hash
+    @out_hash = {}
+    lines.split(/\n/).each do |line|
+      /(.+)\{(.+)\}/ =~ line
+      next if $1.nil?
+      next if $2.nil?
+      selectors, attributes = $1, $2
+
+      attributes.split( ';' ).each do |attr|
+        next if attr.strip.empty?
+        @out_hash["{ #{attr.strip}; }"] ||=[]
+        @out_hash["{ #{attr.strip}; }"] += selectors.split(',').map{ |s| s.strip }
       end
-
-      puts selector
-      writer.puts selector
     end
-    puts attr
-    writer.puts attr
-    puts ''
-    writer.puts
+  end
+
+  def construct_file
+    sorted_keys = @out_hash.keys.sort
+
+    File.open(out_file, 'w+') do |writer|
+      sorted_keys.each do |attr|
+        selectors = @out_hash[attr]
+
+        selectors.each do |selector|
+          unless selectors.last == selector
+            selector = selector + ','
+          end
+
+          writer.puts selector
+        end
+        writer.puts attr
+        writer.puts
+      end
+    end
+
   end
 end
+
+parses = Parses.new ARGV
+parses.run
+
+__END__
 
