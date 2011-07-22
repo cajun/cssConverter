@@ -30,7 +30,7 @@ class Parses
   def remove_newlines
     lines.gsub! /;\s*$\n/, "; "
     lines.gsub! /,\s*$\n/, ", "
-    lines.gsub! /{\s*$\n/, "{ "
+    lines.gsub! /\{\s*$\n/, "{ "
     lines.gsub! /^\s*\}\n/, " }"
     self
   end
