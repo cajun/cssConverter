@@ -1,3 +1,5 @@
+require 'open-uri'
+
 class Parses
   BLOCK_COMMENT = /\/\*.*?\*\//m
   LINE_COMMENT =  /\/\/.*/
@@ -16,12 +18,12 @@ class Parses
   end
 
   def lines
-    @lines ||= File.read @in_file
+    @lines ||= open( @in_file ).read
   end
 
   def remove_comments
-    lines.gsub! BLOCK_COMMENT, ''
-    #lines.gsub! LINE_COMMENT, ''
+    lines.gsub! /\/\*.*?\*\//m, ''
+    lines.gsub! /\/\/[^www\.].*/, ''
     self
   end
 
@@ -29,8 +31,8 @@ class Parses
     lines.gsub! /;\s*$\n/, "; "
     lines.gsub! /,\s*$\n/, ", "
     lines.gsub! /{\s*$\n/, "{ "
-      lines.gsub! /^\s*\}\n/, " }"
-      self
+    lines.gsub! /^\s*\}\n/, " }"
+    self
   end
 
   def construct_hash
