@@ -1,80 +1,75 @@
-require 'open-uri'
 
-class Parses
-  BLOCK_COMMENT = /\/\*.*?\*\//m
-  LINE_COMMENT =  /\/\/.*/
-
-    attr_accessor :in_file, :out_file, :out_hash
-  def initialize(args)
-    @in_file, @out_file = args
+class Rule
+  def initialize(str)
+    @body = str
   end
 
-  def run
-    self.remove_comments
-    self.remove_newlines
-    self.construct_hash
-    self.construct_file
-    self
+  def selectors
+    @body.match(/[^{]*/).to_s.split(/,/).map{|s| s.strip}.select{|s| !s.empty? }
   end
 
-  def lines
-    @lines ||= open( @in_file ).read
-  end
-
-  def remove_comments
-    lines.gsub! /\/\*.*?\*\//m, ''
-    lines.gsub! /\/\/[^www\.].*/, ''
-    self
-  end
-
-  def remove_newlines
-    lines.gsub! /;\s*$\n/, "; "
-    lines.gsub! /,\s*$\n/, ", "
-    lines.gsub! /{\s*$\n/, "{ "
-    lines.gsub! /^\s*\}\n/, " }"
-    self
-  end
-
-  def construct_hash
-    @out_hash = {}
-    lines.split(/\n/).each do |line|
-      /(.+)\{(.+)\}/ =~ line
-      next if $1.nil?
-      next if $2.nil?
-      selectors, attributes = $1, $2
-
-      attributes.split( ';' ).each do |attr|
-        next if attr.strip.empty?
-        @out_hash["{ #{attr.strip}; }"] ||=[]
-        @out_hash["{ #{attr.strip}; }"] += selectors.split(',').map{ |s| s.strip }
-      end
+  def props
+    begin
+    p = @body.match(/\{([^}]*)/)[1].split(';').select{|s| !s.strip.empty? }
+    p.map{|s| "{ " + s.strip + " }"}
+    rescue
+      []
     end
   end
 
-  def construct_file
-    sorted_keys = @out_hash.keys.sort
+  def body
+    @body
+  end
 
-    File.open(out_file, 'w+') do |writer|
-      sorted_keys.each do |attr|
-        selectors = @out_hash[attr]
+end
 
-        selectors.each do |selector|
-          unless selectors.last == selector
-            selector = selector + ','
-          end
 
-          writer.puts selector
-        end
-        writer.puts attr
-        writer.puts
-      end
+in_file, out_file = ARGV
+
+#file = File.open(in_file, "r")
+#rules = file.read.split('}')
+
+text = ""
+file = File.open(in_file)
+file.each{ |line| text += line }
+text = text.gsub( /[\n\r\t]/m, " " )
+text = text.gsub( / +/m, " " )
+text = text.gsub( /\/\*[^*]*\*\//m, " " )
+rules = text.split('}')
+
+rules = rules.map{|r| Rule.new(r) }
+
+hash = {}
+
+##BUILD 
+rules.each do |r|
+  r.props.each do |p|
+    
+    #add all the keys
+    if !( hash.has_key? p) then
+      hash[p] = []
+    end
+
+    #add the selector
+    r.selectors.each do |s|
+      hash[p].push s
     end
 
   end
 end
 
-parses = Parses.new ARGV
-parses.run
+##PRINT
+output = ""
+hash.keys.sort.each do |key|
+  output += "\n"
+  output += hash[key].join(",\n") + "\n"
+  output += key + "\n"
+end
 
-__END__
+puts output
+
+out_file = File.new(out_file, "w")
+out_file.write(output)
+out_file.close
+
 
